@@ -42,11 +42,12 @@ enum {
 };
 
 Point orig;
-double G, θ, scale, ε;
+double G, θ, scale, ε, Λ, LIM;
 Body ZB;
 QB space;
 
 Body *body(void);
+void calcforces(Body*);
 void center(int);
 
 void quadcalc(QB, Body*, double);

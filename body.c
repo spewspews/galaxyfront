@@ -19,7 +19,20 @@ body(void)
 	return b;
 }
 
-void calcforces(Body*);
+void
+calcforces(Body *b)
+{
+	double h;
+	b->ax = b->newax;
+	b->ay = b->neway;
+	h = hypot(b->x, b->y);
+	if(h != 0.0) {
+		b->newax = Λ*b->x/h;
+		b->neway = Λ*b->y/h;
+	} else
+		b->newax = b->neway = 0;
+	quadcalc(space, b, LIM);	
+}
 
 void
 center(int rec)
