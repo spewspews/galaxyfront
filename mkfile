@@ -1,7 +1,10 @@
 </$objtype/mkfile
 
-TARG=\
-	galaxy
+TARG=galaxy
+OFILES=galaxy.$O\
+	quad.$O\
+	body.$O\
+
 BIN=/$objtype/bin/games
 
-</sys/src/cmd/mkmany
+</sys/src/cmd/mkone

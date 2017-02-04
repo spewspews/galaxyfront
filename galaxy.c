@@ -8,22 +8,6 @@
 #include <keyboard.h>
 #include "galaxy.h"
 
-typedef struct Quad Quad;
-typedef struct QB QB;
-
-struct QB {
-	union {
-		Quad *q;
-		Body *b;
-	};
-	int t;
-};
-
-struct Quad {
-	QB c[4];
-	double x, y, mass;
-};
-
 struct {
 	ulong c;
 	Image *i;
@@ -57,6 +41,7 @@ Cursor crosscursor = {
 	 0x7F, 0xFE, 0x01, 0x80, 0x01, 0x80, 0x01, 0x80,
 	 0x01, 0x80, 0x01, 0x80, 0x01, 0x80, 0x00, 0x00, }
 };
+
 Cursor pausecursor={
 	0, 0,
 	0x01, 0x80, 0x03, 0xC0, 0x07, 0xE0, 0x07, 0xe0,
@@ -70,13 +55,9 @@ Cursor pausecursor={
 	0x0A, 0x50, 0x16, 0x68, 0x20, 0x04, 0x3F, 0xFC,
 };
 
-
 enum {
 	STK = 8192,
 	LIMSCALE = 2,
-	EMPTY = 0,
-	QUAD,
-	BODY,
 	MOVE = 0,
 	ZOOM,
 	SPEED,
@@ -98,13 +79,13 @@ Keyboardctl kc;
 double
 	G = 6.674,
 	θ = 1,
+	scale = 10,
+	ε = 500,
 	dt = .1,
 	DENS = 10,
-	ε = 500,
 	LIM = 10,
 	Λ,
 	dt²;
-QB space;
 char *file;
 int showv, showa, throttle, paused;
 
@@ -120,11 +101,6 @@ char *menustr[] = {
 Menu menu = {
 	.item menustr
 };
-
-struct {
-	Quad *a;
-	int l, max;
-} quads;
 
 #define CHECKLIM(b, f) \
 	if(((f) = fabs((b)->x)) > LIM/2)	\
@@ -156,31 +132,6 @@ pause(int p, int pri)
 		qunlock(&glxy);
 		break;
 	}
-}
-
-void
-growquads(void)
-{
-	quads.max *= 2;
-	quads.a = realloc(quads.a, sizeof(Quad) * quads.max);
-	if(quads.a == nil)
-		sysfatal("could not realloc quads: %r");
-}
-
-Quad*
-quad(Body *b)
-{
-	Quad *q;
-
-	if(quads.l == quads.max)
-		return nil;
-
-	q = quads.a + quads.l++;
-	memset(q->c, 0, sizeof(QB)*4);
-	q->x = b->x;
-	q->y = b->y;
-	q->mass = b->mass;
-	return q;
 }
 
 Image*
@@ -256,6 +207,25 @@ setsize(Body *b)
 }
 
 void
+setvel(Body *b)
+{
+	Point pos, d;
+
+	pos.x = b->x / scale + orig.x;
+	pos.y = b->y / scale + orig.y;
+	d = subpt(mc->xy, pos);
+	b->vx = (double)d.x*scale/10;
+	b->vy = (double)d.y*scale/10;
+}
+
+void
+setpos(Body *b)
+{
+	b->x = (mc->xy.x - orig.x) * scale;
+	b->y = (mc->xy.y - orig.y) * scale;
+}
+
+void
 dosize(Body *b)
 {
 	Point p;
@@ -273,18 +243,6 @@ dosize(Body *b)
 }
 
 void
-setvel(Body *b)
-{
-	Point pos, d;
-
-	pos.x = b->x / scale + orig.x;
-	pos.y = b->y / scale + orig.y;
-	d = subpt(mc->xy, pos);
-	b->vx = (double)d.x*scale/10;
-	b->vy = (double)d.y*scale/10;
-}
-
-void
 dovel(Body *b)
 {
 	Point p;
@@ -298,13 +256,6 @@ dovel(Body *b)
 			break;
 	}
 	moveto(mc, p);
-}
-
-void
-setpos(Body *b)
-{
-	b->x = (mc->xy.x - orig.x) * scale;
-	b->y = (mc->xy.y - orig.y) * scale;
 }
 
 void
@@ -467,8 +418,8 @@ save(void)
 	
 	Bprint(&bout, "ORIG %d %d\n", orig.x, orig.y);
 	Bprint(&bout, "SCALE %g\n", scale);
-	Bprint(&bout, "DT%g\n", dt);
-	Bprint(&bout, "COSM%g\n", Λ);
+	Bprint(&bout, "DT %g\n", dt);
+	Bprint(&bout, "COSM %g\n", Λ);
 	for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 		Bprint(&bout, "MKBODY %g %g ", b->x, b->y);
 		Bprint(&bout, "%g %g ", b->vx, b->vy);
@@ -637,101 +588,6 @@ kbdthread(void*)
 			}
 			setcursor(mc, cursor);
 		}
-	}
-}
-
-int
-quadins(Body *nb, double size)
-{
-	QB *qb;
-	Quad *q;
-	Body *b;
-	double mass, qx, qy;
-	uint qxy;
-
-	if(space.t == EMPTY) {
-		space.t = BODY;
-		space.b = nb;
-		return 0;
-	}
-
-	qb = &space;
-	qx = 0.0;
-	qy = 0.0;
-	for(;;) {
-		if(qb->t == BODY) {
-			b = qb->b;
-			qxy = b->x < qx ? 0 : 1;
-			qxy |= b->y < qy ? 0 : 2;
-			qb->t = QUAD;
-			if((qb->q = quad(b)) == nil)
-				return -1;
-			qb->q->c[qxy].t = BODY;
-			qb->q->c[qxy].b = b;
-		}
-
-		q = qb->q;
-		mass = q->mass + nb->mass;
-		q->x = (q->x*q->mass + nb->x*nb->mass) / mass;
-		q->y = (q->y*q->mass + nb->y*nb->mass) / mass;
-		q->mass = mass;
-
-		qxy = nb->x < qx ? 0 : 1;
-		qxy |= nb->y < qy ? 0 : 2;
-		if(q->c[qxy].t == EMPTY) {
-			q->c[qxy].t = BODY;
-			q->c[qxy].b = nb;
-			return 0;
-		}
-
-		qb = &q->c[qxy];
-		size /= 2;
-		qx += qxy&1 ? size/2 : -size/2;
-		qy += qxy&2 ? size/2 : -size/2;
-	}
-}
-
-void
-quadcalc(QB qb, Body *b, double size)
-{
-	double fx÷❨m₁m₂❩, fy÷❨m₁m₂❩, dx, dy, h, G÷h³;
-
-	for(;;) switch(qb.t) {
-	default:
-		sysfatal("quadcalc: No such type");
-	case EMPTY:
-		return;
-	case BODY:
-		if(qb.b == b)
-			return;
-		dx = qb.b->x - b->x;
-		dy = qb.b->y - b->y;
-		h = hypot(hypot(dx, dy), ε);
-		G÷h³ = G / (h*h*h);
-		fx÷❨m₁m₂❩ = dx * G÷h³;
-		fy÷❨m₁m₂❩ = dy * G÷h³;
-		b->newax += fx÷❨m₁m₂❩ * qb.b->mass;
-		b->neway += fy÷❨m₁m₂❩ * qb.b->mass;
-		return;
-	case QUAD:
-		dx = qb.q->x - b->x;
-		dy = qb.q->y - b->y;
-		h = hypot(dx, dy);
-		if(h != 0.0 && size/h < θ) {
-			h = hypot(h, ε);
-			G÷h³ = G / (h*h*h);
-			fx÷❨m₁m₂❩ = dx * G÷h³;
-			fy÷❨m₁m₂❩ = dy * G÷h³;
-			b->newax += fx÷❨m₁m₂❩ * qb.q->mass;
-			b->neway += fy÷❨m₁m₂❩ * qb.q->mass;
-			return;
-		}
-		size /= 2;
-		quadcalc(qb.q->c[0], b, size);
-		quadcalc(qb.q->c[1], b, size);
-		quadcalc(qb.q->c[2], b, size);
-		qb = qb.q->c[3];
-		break;	/* quadcalc(q->q[3], b, size); */
 	}
 }
 
