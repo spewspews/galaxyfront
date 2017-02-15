@@ -155,8 +155,8 @@ drawbody(Body *b)
 	pos.y = b->y / scale + orig.y;
 	s = b->size/scale;
 	fillellipse(screen, pos, s, s, b->col, ZP);
-	v.x = b->vx/scale*10;
-	v.y = b->vy/scale*10;
+	v.x = b->v.x/scale*10;
+	v.y = b->v.y/scale*10;
 	if(v.x != 0 || v.y != 0)
 		line(screen, pos, addpt(pos, v), Enddisc, Endarrow, 0, b->col, ZP);
 	flushimage(display, 1);
@@ -165,7 +165,7 @@ drawbody(Body *b)
 void
 drawglxy(void)
 {
-	Point pos, vof;
+	Point pos, va;
 	Body *b;
 	int s;
 
@@ -176,16 +176,16 @@ drawglxy(void)
 		s = b->size/scale;
 		fillellipse(screen, pos, s, s, b->col, ZP);
 		if(showv) {
-			vof.x = b->vx/scale*10;
-			vof.y = b->vy/scale*10;
-			if(vof.x != 0 || vof.y != 0)
-				line(screen, pos, addpt(pos, vof), Enddisc, Endarrow, 0, b->col, ZP);
+			va.x = b->v.x/scale*10;
+			va.y = b->v.y/scale*10;
+			if(va.x != 0 || va.y != 0)
+				line(screen, pos, addpt(pos, va), Enddisc, Endarrow, 0, b->col, ZP);
 		}
 		if(showa) {
-			vof.x = b->ax;
-			vof.y = b->ay;
-			if(vof.x != 0 || vof.y != 0)
-				line(screen, pos, addpt(pos, vof), Enddisc, Endarrow, 0, b->col, ZP);
+			va.x = b->a.x;
+			va.y = b->a.y;
+			if(va.x != 0 || va.y != 0)
+				line(screen, pos, addpt(pos, va), Enddisc, Endarrow, 0, b->col, ZP);
 		}
 	}
 	flushimage(display, 1);
@@ -214,8 +214,8 @@ setvel(Body *b)
 	pos.x = b->x / scale + orig.x;
 	pos.y = b->y / scale + orig.y;
 	d = subpt(mc->xy, pos);
-	b->vx = (double)d.x*scale/10;
-	b->vy = (double)d.y*scale/10;
+	b->v.x = (double)d.x*scale/10;
+	b->v.y = (double)d.y*scale/10;
 }
 
 void
@@ -261,6 +261,7 @@ dovel(Body *b)
 void
 dobody(void)
 {
+	Vector gc;
 	double f;
 	Body *b;
 
@@ -283,8 +284,13 @@ dobody(void)
 		else
 			setpos(b);
 	}
+
 	CHECKLIM(b, f);
-	center(1);
+
+	gc = center();
+	orig.x += gc.x / scale;
+	orig.y += gc.y / scale;
+
 	pause(1, 0);
 }
 
@@ -374,8 +380,8 @@ load(int fd)
 			b = body();
 			b->x = strtod(line, &line);
 			b->y = strtod(line, &line);
-			b->vx = strtod(line, &line);
-			b->vy = strtod(line, &line);
+			b->v.x = strtod(line, &line);
+			b->v.y = strtod(line, &line);
 			b->mass = strtod(line, nil);
 			b->size = sqrt(b->mass/(3*DENS)); /* π is exactly 3 */
 			b->col = randcol();
@@ -398,7 +404,7 @@ load(int fd)
 		}
 	}
 	Bterm(&bin);
-	center(0);
+	center();
 }
 
 void
@@ -422,7 +428,7 @@ save(void)
 	Bprint(&bout, "COSM %g\n", Λ);
 	for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 		Bprint(&bout, "MKBODY %g %g ", b->x, b->y);
-		Bprint(&bout, "%g %g ", b->vx, b->vy);
+		Bprint(&bout, "%g %g ", b->v.x, b->v.y);
 		Bprint(&bout, "%g\n", b->size);
 	}
 	Bterm(&bout);
@@ -617,10 +623,10 @@ Again:
 		for(b = glxy.a; b < glxy.a + glxy.l; b++)
 			calcforces(b);
 		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
-			b->x += dt*b->vx + dt²*b->ax/2;
-			b->y += dt*b->vy + dt²*b->ay/2;
-			b->vx += dt*(b->ax + b->newax)/2;
-			b->vy += dt*(b->ay + b->neway)/2;
+			b->x += dt*b->v.x + dt²*b->a.x/2;
+			b->y += dt*b->v.y + dt²*b->a.y/2;
+			b->v.x += dt*(b->a.x + b->newa.x)/2;
+			b->v.y += dt*(b->a.y + b->newa.y)/2;
 			CHECKLIM(b, f);
 		}
 		qunlock(&glxy);
@@ -651,7 +657,7 @@ mkquads(void)
 void
 usage(void)
 {
-	fprint(2, "Usage: %s [-t throttle] [-G gravity] [-ε smooth] [file]\n", argv0);
+	fprint(2, "Usage: %s [-t throttle] [-G gravity] [-ε smooth] [-Λ cosm] [file]\n", argv0);
 	threadexitsall("usage");
 }
 
@@ -673,6 +679,9 @@ threadmain(int argc, char **argv)
 		break;
 	case L'ε':
 		ε = strtod(EARGF(usage()), nil);
+		break;
+	case L'Λ':
+		Λ = strtod(EARGF(usage()), nil);
 		break;
 	case 'i':
 		doload++;

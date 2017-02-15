@@ -98,8 +98,8 @@ quadcalc(QB qb, Body *b, double size)
 		G÷h³ = G / (h*h*h);
 		fx÷❨m₁m₂❩ = dx * G÷h³;
 		fy÷❨m₁m₂❩ = dy * G÷h³;
-		b->newax += fx÷❨m₁m₂❩ * qb.b->mass;
-		b->neway += fy÷❨m₁m₂❩ * qb.b->mass;
+		b->newa.x += fx÷❨m₁m₂❩ * qb.b->mass;
+		b->newa.y += fy÷❨m₁m₂❩ * qb.b->mass;
 		return;
 	case QUAD:
 		dx = qb.q->x - b->x;
@@ -110,8 +110,8 @@ quadcalc(QB qb, Body *b, double size)
 			G÷h³ = G / (h*h*h);
 			fx÷❨m₁m₂❩ = dx * G÷h³;
 			fy÷❨m₁m₂❩ = dy * G÷h³;
-			b->newax += fx÷❨m₁m₂❩ * qb.q->mass;
-			b->neway += fy÷❨m₁m₂❩ * qb.q->mass;
+			b->newa.x += fx÷❨m₁m₂❩ * qb.q->mass;
+			b->newa.y += fy÷❨m₁m₂❩ * qb.q->mass;
 			return;
 		}
 		size /= 2;

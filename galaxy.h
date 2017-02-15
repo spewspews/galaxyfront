@@ -1,6 +1,7 @@
 typedef struct QB QB;
 typedef struct Body Body;
 typedef struct Quad Quad;
+typedef struct Vector Vector;
 
 struct QB {
 	union {
@@ -10,18 +11,21 @@ struct QB {
 	int t;
 };
 
-struct Body {
+struct Vector {
 	double x, y;
-	double vx, vy;
-	double ax, ay;
-	double newax, neway;
+};
+
+struct Body {
+	Vector;
+	Vector v, a, newa;
 	double size, mass;
 	Image *col;
 };
 
 struct Quad {
+	Vector;
 	QB c[4];
-	double x, y, mass;
+	double mass;
 };
 
 struct {
@@ -48,7 +52,7 @@ QB space;
 
 Body *body(void);
 void calcforces(Body*);
-void center(int);
+Vector center(void);
 
 void quadcalc(QB, Body*, double);
 int quadins(Body*, double);
