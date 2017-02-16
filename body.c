@@ -59,9 +59,9 @@ calcforces(Body *b)
 		b->newa.y = Λ/b->mass * b->y/h;
 	} else
 		b->newa.x = b->newa.y = 0;
-	calcs = 0;
+	DEBUG(calcs = 0;)
 	quadcalc(space, b, LIM);
-	avgcalcs += calcs;
+	DEBUG(avgcalcs += calcs;)
 }
 
 Vector

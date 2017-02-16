@@ -66,6 +66,9 @@ int quadins(Body*, double);
 void growquads(void);
 void mkquads(void);
 
+int debug;
 int insdepth;
 int calcs;
 double avgcalcs;
+
+#define DEBUG(e) if(debug) {e}

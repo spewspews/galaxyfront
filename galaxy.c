@@ -593,19 +593,19 @@ simulate(void*)
 Again:
 		space.t = EMPTY;
 		quads.l = 0;
-		insdepth = 0;
+		DEBUG(insdepth = 0;)
 		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 			if(quadins(b, LIM) == -1) {
 				growquads();
 				goto Again;
 			}
 		}
-		fprint(2, "insdepth: %d\n", insdepth);
-		avgcalcs = 0;
+		DEBUG(fprint(2, "insdepth: %d\n", insdepth);)
+
+		DEBUG(avgcalcs = 0;)
 		for(b = glxy.a; b < glxy.a + glxy.l; b++)
 			calcforces(b);
-		avgcalcs /= glxy.l;
-		fprint(2, "avgcalcs: %g\n", avgcalcs);
+		DEBUG(avgcalcs /= glxy.l; fprint(2, "avgcalcs: %g\n", avgcalcs);)
 		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 			b->x += dt*b->v.x + dt²*b->a.x/2;
 			b->y += dt*b->v.y + dt²*b->a.y/2;
@@ -648,6 +648,9 @@ threadmain(int argc, char **argv)
 		break;
 	case 'i':
 		doload++;
+		break;
+	case 'D':
+		debug++;
 		break;
 	} ARGEND
 
