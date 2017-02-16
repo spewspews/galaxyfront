@@ -47,28 +47,39 @@ enum {
 	EMPTY,
 	QUAD,
 	BODY,
+	LIMSCALE = 2,
 };
 
 Point orig;
-double G, θ, scale, ε, Λ, LIM;
+double G, θ, scale, ε, Λ, LIM, dt, dt²;
 Body ZB;
 QB space;
+
+Image *randcol(void);
 
 Body *body(void);
 void drawbody(Body*);
 void calcforces(Body*);
 Vector center(void);
-void mkglxy(void);
+void glxyinit(void);
+void readglxy(int);
+void writeglxy(int);
 int Bfmt(Fmt*);
 
 void quadcalc(QB, Body*, double);
 int quadins(Body*, double);
 void growquads(void);
-void mkquads(void);
+void quadsinit(void);
 
-int debug;
-int insdepth;
+int stats;
+int quaddepth;
 int calcs;
 double avgcalcs;
 
-#define DEBUG(e) if(debug) {e}
+#define STATS(e) if(stats) {e}
+
+#define CHECKLIM(b, f) \
+	if(((f) = fabs((b)->x)) > LIM/2)	\
+		LIM = (f)*LIMSCALE;	\
+	if(((f) = fabs((b)->y)) > LIM/2)	\
+		LIM = (f)*LIMSCALE

@@ -8,28 +8,6 @@
 #include <keyboard.h>
 #include "galaxy.h"
 
-struct {
-	ulong c;
-	Image *i;
-} cols[] = {
-	DWhite, nil,
-	DRed, nil,
-	DGreen, nil,
-	DCyan, nil,
-	DMagenta, nil,
-	DYellow, nil,
-	DPaleyellow, nil,
-	DDarkyellow, nil,
-	DDarkgreen, nil,
-	DPalegreen, nil,
-	DPalebluegreen, nil,
-	DPaleblue, nil,
-	DPalegreygreen, nil,
-	DYellowgreen, nil,
-	DGreyblue, nil,
-	DPalegreyblue, nil,
-};
-
 Cursor crosscursor = {
 	{-7, -7},
 	{0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0,
@@ -57,7 +35,6 @@ Cursor pausecursor={
 
 enum {
 	STK = 8192,
-	LIMSCALE = 2,
 	MOVE = 0,
 	ZOOM,
 	SPEED,
@@ -65,12 +42,6 @@ enum {
 	LOAD,
 	EXIT,
 	MEND,
-	MKBODY = 0,
-	ORIG,
-	DT,
-	SCALE,
-	COSM,
-	NOCMD,
 };
 
 Cursor *cursor;
@@ -101,11 +72,37 @@ Menu menu = {
 	.item menustr
 };
 
-#define CHECKLIM(b, f) \
-	if(((f) = fabs((b)->x)) > LIM/2)	\
-		LIM = (f)*LIMSCALE;	\
-	if(((f) = fabs((b)->y)) > LIM/2)	\
-		LIM = (f)*LIMSCALE
+Image*
+randcol(void)
+{
+	static struct {
+		ulong c;
+		Image *i;
+	} cols[] = {
+		DWhite, nil,
+		DRed, nil,
+		DGreen, nil,
+		DCyan, nil,
+		DMagenta, nil,
+		DYellow, nil,
+		DPaleyellow, nil,
+		DDarkyellow, nil,
+		DDarkgreen, nil,
+		DPalegreen, nil,
+		DPalebluegreen, nil,
+		DPaleblue, nil,
+		DPalegreygreen, nil,
+		DYellowgreen, nil,
+		DGreyblue, nil,
+		DPalegreyblue, nil,
+	};
+	int r;
+
+	r = nrand(nelem(cols));
+	if(cols[r].i == nil)
+		cols[r].i = allocimage(display, Rect(0,0,1,1), screen->chan, 1, cols[r].c);
+	return cols[r].i;
+}
 
 void
 pause(int p, int pri)
@@ -133,15 +130,23 @@ pause(int p, int pri)
 	}
 }
 
-Image*
-randcol(void)
+void
+drawstats(void)
 {
-	int r;
+	Point p;
+	static char buf[1024];
 
-	r = nrand(nelem(cols));
-	if(cols[r].i == nil)
-		cols[r].i = allocimage(display, Rect(0,0,1,1), screen->chan, 1, cols[r].c);
-	return cols[r].i;
+	snprint(buf, sizeof(buf), "Number of bodies: %d", glxy.l);
+	p = addpt(screen->r.min, (Point){5, 3});
+	string(screen, p, display->white, ZP, font, buf);
+
+	snprint(buf, sizeof(buf), "Avg. calculations per body: %g", avgcalcs);
+	p = addpt(p, (Point){0, font->height});
+	string(screen, p, display->white, ZP, font, buf);
+
+	snprint(buf, sizeof(buf), "Max depth of quad tree: %d", quaddepth);
+	p = addpt(p, (Point){0, font->height});
+	string(screen, p, display->white, ZP, font, buf);
 }
 
 void
@@ -158,18 +163,19 @@ drawglxy(void)
 		s = b->size/scale;
 		fillellipse(screen, pos, s, s, b->col, ZP);
 		if(showv) {
-			va.x = b->v.x/scale*10;
-			va.y = b->v.y/scale*10;
+			va.x = b->v.x/scale;
+			va.y = b->v.y/scale;
 			if(va.x != 0 || va.y != 0)
 				line(screen, pos, addpt(pos, va), Enddisc, Endarrow, 0, b->col, ZP);
 		}
 		if(showa) {
-			va.x = b->a.x;
-			va.y = b->a.y;
+			va.x = b->a.x/scale*50;
+			va.y = b->a.y/scale*50;
 			if(va.x != 0 || va.y != 0)
 				line(screen, pos, addpt(pos, va), Enddisc, Endarrow, 0, b->col, ZP);
 		}
 	}
+	STATS(drawstats();)
 	flushimage(display, 1);
 }
 
@@ -304,116 +310,6 @@ getinput(char *info, char *sug)
 	return input;
 }
 
-char *cmds[] = {
-	[MKBODY]	"MKBODY",
-	[ORIG]	"ORIG",
-	[DT]	"DT",
-	[SCALE]	"SCALE",
-	[COSM]	"COSM",
-};
-
-int
-getcmd(char *l)
-{
-	int cmd;
-
-	for(cmd = 0; cmd < nelem(cmds); cmd++) {
-		if(strcmp(l, cmds[cmd]) == 0)
-			return cmd;
-	}
-	return NOCMD;
-}
-
-void
-load(int fd)
-{
-	static Biobuf bin;
-	char *line;
-	double f;
-	int cmd, len;
-	Body *b;
-
-	glxy.l = 0;
-	orig = divpt(subpt(screen->r.max, screen->r.min), 2);
-	orig = addpt(orig, screen->r.min);
-	Binit(&bin, fd, OREAD);
-	for(;;) {
-		line = Brdline(&bin, ' ');
-		len = Blinelen(&bin);
-		if(line == nil) {
-			if(len == 0)
-				break;
-			sysfatal("load: read error: %r");
-		}
-
-		line[len-1] = '\0';
-		cmd = getcmd(line);
-
-		line = Brdline(&bin, '\n');
-		if(line == nil)
-			sysfatal("load: read error: %r");
-		len = Blinelen(&bin);
-		line[len-1] = '\0';
-
-		switch(cmd) {
-		case NOCMD:
-			sysfatal("load: no such command");
-		case MKBODY:
-			b = body();
-			b->x = strtod(line, &line);
-			b->y = strtod(line, &line);
-			b->v.x = strtod(line, &line);
-			b->v.y = strtod(line, &line);
-			b->mass = strtod(line, nil);
-			b->size = sqrt(b->mass/(3)); /* π is exactly 3 */
-			b->col = randcol();
-			CHECKLIM(b, f);
-			break;
-		case ORIG:
-			orig.x = strtol(line, &line, 10);
-			orig.y = strtol(line, nil, 10);
-			break;
-		case DT:
-			dt = strtod(line, nil);
-			dt² = dt*dt;
-			break;
-		case SCALE:
-			scale = strtod(line, nil);
-			break;
-		case COSM:
-			Λ = strtod(line, nil);
-			break;
-		}
-	}
-	Bterm(&bin);
-	center();
-}
-
-void
-save(void)
-{
-	int fd;
-	static Biobuf bout;
-	Body *b;
-
-	if(file == nil)
-		return;
-	fd = create(file, OWRITE, 0666);
-	if(fd < 0)
-		sysfatal("bodyprint: could not create file %s: %r", file);
-	Binit(&bout, fd, OWRITE);
-
-	
-	Bprint(&bout, "ORIG %d %d\n", orig.x, orig.y);
-	Bprint(&bout, "SCALE %g\n", scale);
-	Bprint(&bout, "DT %g\n", dt);
-	Bprint(&bout, "COSM %g\n", Λ);
-	for(b = glxy.a; b < glxy.a + glxy.l; b++)
-		Bprint(&bout, "%B\n", b);
-	Bterm(&bout);
-	close(fd);
-}
-
 void
 move(void)
 {
@@ -441,6 +337,14 @@ move(void)
 }
 
 void
+load(int fd)
+{
+		orig = divpt(subpt(screen->r.max, screen->r.min), 2);
+		orig = addpt(orig, screen->r.min);
+		readglxy(fd);
+}
+
+void
 domenu(void)
 {
 	int fd;
@@ -455,7 +359,11 @@ domenu(void)
 			break;
 		free(file);
 		file = s;
-		save();
+		fd = create(file, OWRITE, 0666);
+		if(fd < 0)
+			sysfatal("domenu: could not create file %s: %r", file);
+		writeglxy(fd);
+		close(fd);
 		break;
 	case LOAD:
 		s = getinput("Enter file:", file);
@@ -509,13 +417,6 @@ mousethread(void*)
 		readmouse(mc);
 		switch(mc->buttons) {
 		case 1:
-			if(paused) {
-				paused ^= 1;
-				cursor = nil;
-				setcursor(mc, cursor);
-				pause(1, 1);
-				break;
-			}
 			dobody();
 			break;
 		case 4:
@@ -556,6 +457,9 @@ kbdthread(void*)
 		if(kc.c != nil)
 			send(kc.c, &r);
 		else switch(r) {
+		case 's':
+			stats ^= 1;
+			break;
 		case 'v':
 			showv ^= 1;
 			break;
@@ -593,19 +497,18 @@ simulate(void*)
 Again:
 		space.t = EMPTY;
 		quads.l = 0;
-		DEBUG(insdepth = 0;)
+		STATS(quaddepth = 0;)
 		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 			if(quadins(b, LIM) == -1) {
 				growquads();
 				goto Again;
 			}
 		}
-		DEBUG(fprint(2, "insdepth: %d\n", insdepth);)
 
-		DEBUG(avgcalcs = 0;)
+		STATS(avgcalcs = 0;)
 		for(b = glxy.a; b < glxy.a + glxy.l; b++)
 			calcforces(b);
-		DEBUG(avgcalcs /= glxy.l; fprint(2, "avgcalcs: %g\n", avgcalcs);)
+		STATS(avgcalcs /= glxy.l;)
 		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 			b->x += dt*b->v.x + dt²*b->a.x/2;
 			b->y += dt*b->v.y + dt²*b->a.y/2;
@@ -649,9 +552,6 @@ threadmain(int argc, char **argv)
 	case 'i':
 		doload++;
 		break;
-	case 'D':
-		debug++;
-		break;
 	} ARGEND
 
 	if(argc > 1)
@@ -678,12 +578,11 @@ threadmain(int argc, char **argv)
 	dt² = dt*dt;
 	orig = divpt(subpt(screen->r.max, screen->r.min), 2);
 	orig = addpt(orig, screen->r.min);
-	mkglxy();
-	mkquads();
-	if(doload) {
+	glxyinit();
+	quadsinit();
+	if(doload)
 		load(0);
-		close(0);
-	}
+	close(0);
 	threadcreate(mousethread, nil, STK);
 	threadcreate(resizethread, nil, STK);
 	threadcreate(kbdthread, nil, STK);

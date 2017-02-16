@@ -4,17 +4,19 @@
 #include <draw.h>
 #include "galaxy.h"
 
+Vector o, d;
 double
-	d = 50, drand,
-	m = 10, mrand,
+	sp = 50, sprand,
+	m = 100, mrand,
 	v, vrand,
 	r, rrand,
 	c;
+int new;
 
 void
 usage(void)
 {
-	fprint(2, "Usage: %s [-d dist[±rand]] [-m mass[±rand]] [-v vel[±rand]] [-r rotvel[±rand]] [-c] nbody\n", argv0);
+	fprint(2, "Usage: %s [-s spacing[±rand]]\n\t[-m mass[±rand]] [-v vel[±rand]]\n\t[-r angvel[±rand]] [-d xdir,ydir]\n\t[-o xoff,yoff] [-f file]\n\t[-c] [-i] size\n", argv0);
 	exits("usage");
 }
 
@@ -29,6 +31,19 @@ polar(double ang, double mag)
 }
 
 void quadcalc(QB, Body*, double){}
+Image *randcol(void){ return nil; }
+
+Vector
+getvec(char *str)
+{
+	Vector v;
+
+	v.x = strtod(str, &str);
+	if(*str != ',')
+		usage();
+	v.y = strtod(str+1, nil);
+	return v;
+}
 
 double
 getvals(char *str, double *rand)
@@ -49,22 +64,19 @@ getvals(char *str, double *rand)
 #define RAND(r)	((r)*(frand()*2 - 1))
 
 void
-circle(long){}
-
-void
-square(long n)
+mkbodies(double lim)
 {
 	Body *b;
-	long sq;
-	int i, j;
+	double x, y;
 
-	sq = sqrt(n);
-	for(i = 0; i < sq; i++)
-	for(j = 0; j < sq; j++) {
+	for(x = -lim/2; x < lim/2; x += sp)
+	for(y = -lim/2; y < lim/2; y += sp) {
 		b = body();
-		b->x = i*(d + RAND(drand));
-		b->y = j*(d + RAND(drand));
+		b->x = x + RAND(sprand);
+		b->y = y + RAND(sprand);
 		b->v = polar(frand()*π2, v+RAND(vrand));
+		b->v.x += d.x;
+		b->v.y += d.y;
 		b->mass = m + RAND(mrand);
 	}
 	center();
@@ -75,13 +87,26 @@ main(int argc, char **argv)
 {
 	static Biobuf bout;
 	Body *b;
-	long n;
+	double lim;
+	int fd;
 
 	srand(time(nil));
+	fmtinstall('B', Bfmt);
+	glxyinit();
 
 	ARGBEGIN {
-	case 'd':
-		d = getvals(EARGF(usage()), &drand);
+	case 'f':
+		fd = open(EARGF(usage()), OREAD);
+		if(fd < 0)
+			sysfatal("Could not open file %s: %r", *argv);
+		readglxy(fd);
+		close(fd);
+		break;
+	case 'i':
+		readglxy(0);
+		break;
+	case 's':
+		sp = getvals(EARGF(usage()), &sprand);
 		break;
 	case 'm':
 		m = getvals(EARGF(usage()), &mrand);
@@ -95,24 +120,33 @@ main(int argc, char **argv)
 	case 'c':
 		c++;
 		break;
+	case 'o':
+		o = getvec(EARGF(usage()));
+		break;
+	case 'd':
+		d = getvec(EARGF(usage()));
+		break;
 	} ARGEND
 
 	if(argc != 1)
 		usage();
 
-	fmtinstall('B', Bfmt);
-	mkglxy();
-
-	n = strtol(argv[0], nil, 0);
-
-	if(c)
-		circle(n);
-	else
-		square(n);
+	new = glxy.l;
+	lim = strtod(*argv, nil);
+	mkbodies(lim);
 
 	Binit(&bout, 1, OWRITE);
-	for(b = glxy.a; b < glxy.a + glxy.l; b++)
+	for(b = glxy.a; b < glxy.a + new; b++)
 		Bprint(&bout, "%B\n", b);
+
+	for(b = glxy.a+new; b < glxy.a+glxy.l; b++) {
+		if(c)
+		if(hypot(b->x, b->y) > lim/2)
+			continue;
+		b->x += o.x;
+		b->y += o.y;
+		Bprint(&bout, "%B\n", b);
+	}
 	Bterm(&bout);
 
 	exits(nil);

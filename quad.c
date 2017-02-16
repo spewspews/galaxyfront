@@ -71,11 +71,11 @@ quadins(Body *nb, double size)
 		if(q->c[qxy].t == EMPTY) {
 			q->c[qxy].t = BODY;
 			q->c[qxy].b = nb;
-			DEBUG(if(d > insdepth) insdepth = d;)
+			STATS(if(d > quaddepth) quaddepth = d;)
 			return 0;
 		}
 
-		DEBUG(d++;)
+		STATS(d++;)
 		qb = &q->c[qxy];
 		size /= 2;
 		qx += qxy&1 ? size/2 : -size/2;
@@ -104,7 +104,7 @@ quadcalc(QB qb, Body *b, double size)
 		fy÷❨m₁m₂❩ = dy * G÷h³;
 		b->newa.x += fx÷❨m₁m₂❩ * qb.b->mass;
 		b->newa.y += fy÷❨m₁m₂❩ * qb.b->mass;
-		DEBUG(calcs++;)
+		STATS(calcs++;)
 		return;
 	case QUAD:
 		dx = qb.q->x - b->x;
@@ -117,7 +117,7 @@ quadcalc(QB qb, Body *b, double size)
 			fy÷❨m₁m₂❩ = dy * G÷h³;
 			b->newa.x += fx÷❨m₁m₂❩ * qb.q->mass;
 			b->newa.y += fy÷❨m₁m₂❩ * qb.q->mass;
-			DEBUG(calcs++;)
+			STATS(calcs++;)
 			return;
 		}
 		size /= 2;
@@ -130,7 +130,7 @@ quadcalc(QB qb, Body *b, double size)
 }
 
 void
-mkquads(void)
+quadsinit(void)
 {
 	quads.a = calloc(5, sizeof(Body));
 	if(quads.a == nil)
