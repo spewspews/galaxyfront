@@ -67,13 +67,18 @@ void
 mkbodies(double lim)
 {
 	Body *b;
+	Vector p;
 	double x, y;
 
 	for(x = -lim/2; x < lim/2; x += sp)
 	for(y = -lim/2; y < lim/2; y += sp) {
+		p.x = x + RAND(sprand);
+		p.y = y + RAND(sprand);
+		if(c)
+		if(hypot(p.x, p.y) > lim/2)
+			continue;
 		b = body();
-		b->x = x + RAND(sprand);
-		b->y = y + RAND(sprand);
+		b->Vector = p;
 		b->v = polar(frand()*π2, v+RAND(vrand));
 		b->v.x += d.x;
 		b->v.y += d.y;
@@ -140,9 +145,6 @@ main(int argc, char **argv)
 		Bprint(&bout, "%B\n", b);
 
 	for(b = glxy.a+new; b < glxy.a+glxy.l; b++) {
-		if(c)
-		if(hypot(b->x, b->y) > lim/2)
-			continue;
 		b->x += o.x;
 		b->y += o.y;
 		Bprint(&bout, "%B\n", b);
