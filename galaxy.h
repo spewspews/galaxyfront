@@ -28,6 +28,8 @@ struct Quad {
 	double mass;
 };
 
+#pragma varargck type "B" Body*
+
 struct {
 	QLock;
 	Body *a;
@@ -38,6 +40,8 @@ struct {
 	Quad *a;
 	int l, max;
 } quads;
+
+#define π2 6.28318530718e0
 
 enum {
 	EMPTY,
@@ -51,9 +55,17 @@ Body ZB;
 QB space;
 
 Body *body(void);
+void drawbody(Body*);
 void calcforces(Body*);
 Vector center(void);
+void mkglxy(void);
+int Bfmt(Fmt*);
 
 void quadcalc(QB, Body*, double);
 int quadins(Body*, double);
 void growquads(void);
+void mkquads(void);
+
+int insdepth;
+int calcs;
+double avgcalcs;

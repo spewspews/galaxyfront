@@ -3,6 +3,17 @@
 #include <draw.h>
 #include "galaxy.h"
 
+void
+mkglxy(void)
+{
+
+	glxy.a = calloc(5, sizeof(Body));
+	if(glxy.a == nil)
+		sysfatal("could not allocate glxy: %r");
+	glxy.l = 0;
+	glxy.max = 5;
+}
+
 Body*
 body(void)
 {
@@ -20,6 +31,23 @@ body(void)
 }
 
 void
+drawbody(Body *b)
+{
+	Point pos, v;
+	int s;
+
+	pos.x = b->x / scale + orig.x;
+	pos.y = b->y / scale + orig.y;
+	s = b->size/scale;
+	fillellipse(screen, pos, s, s, b->col, ZP);
+	v.x = b->v.x/scale*10;
+	v.y = b->v.y/scale*10;
+	if(v.x != 0 || v.y != 0)
+		line(screen, pos, addpt(pos, v), Enddisc, Endarrow, 0, b->col, ZP);
+	flushimage(display, 1);
+}
+
+void
 calcforces(Body *b)
 {
 	double h;
@@ -31,7 +59,9 @@ calcforces(Body *b)
 		b->newa.y = Λ/b->mass * b->y/h;
 	} else
 		b->newa.x = b->newa.y = 0;
+	calcs = 0;
 	quadcalc(space, b, LIM);
+	avgcalcs += calcs;
 }
 
 Vector
@@ -60,4 +90,23 @@ center(void)
 		b->v.y -= gcv.y;
 	}
 	return gc;
+}
+
+int
+Bfmt(Fmt *f)
+{
+	Body *b;
+	int r;
+
+	b = va_arg(f->args, Body*);
+
+	r = fmtprint(f, "MKBODY %g %g ", b->x, b->y);
+	if(r < 0)
+		return -1;
+
+	r = fmtprint(f, "%g %g ", b->v.x, b->v.y);
+	if(r < 0)
+		return -1;
+
+	return fmtprint(f, "%g", b->mass);
 }

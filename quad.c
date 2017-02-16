@@ -36,6 +36,7 @@ quadins(Body *nb, double size)
 	Body *b;
 	double mass, qx, qy;
 	uint qxy;
+	int d;
 
 	if(space.t == EMPTY) {
 		space.t = BODY;
@@ -43,6 +44,7 @@ quadins(Body *nb, double size)
 		return 0;
 	}
 
+	d = 0;
 	qb = &space;
 	qx = 0.0;
 	qy = 0.0;
@@ -69,9 +71,12 @@ quadins(Body *nb, double size)
 		if(q->c[qxy].t == EMPTY) {
 			q->c[qxy].t = BODY;
 			q->c[qxy].b = nb;
+			if(d > insdepth)
+				insdepth = d;
 			return 0;
 		}
 
+		d++;
 		qb = &q->c[qxy];
 		size /= 2;
 		qx += qxy&1 ? size/2 : -size/2;
@@ -100,6 +105,7 @@ quadcalc(QB qb, Body *b, double size)
 		fy÷❨m₁m₂❩ = dy * G÷h³;
 		b->newa.x += fx÷❨m₁m₂❩ * qb.b->mass;
 		b->newa.y += fy÷❨m₁m₂❩ * qb.b->mass;
+		calcs++;
 		return;
 	case QUAD:
 		dx = qb.q->x - b->x;
@@ -112,6 +118,7 @@ quadcalc(QB qb, Body *b, double size)
 			fy÷❨m₁m₂❩ = dy * G÷h³;
 			b->newa.x += fx÷❨m₁m₂❩ * qb.q->mass;
 			b->newa.y += fy÷❨m₁m₂❩ * qb.q->mass;
+			calcs++;
 			return;
 		}
 		size /= 2;
@@ -121,4 +128,14 @@ quadcalc(QB qb, Body *b, double size)
 		qb = qb.q->c[3];
 		break;	/* quadcalc(q->q[3], b, size); */
 	}
+}
+
+void
+mkquads(void)
+{
+	quads.a = calloc(5, sizeof(Body));
+	if(quads.a == nil)
+		sysfatal("could not allocate quads: %r");
+	quads.l = 0;
+	quads.max = 5;
 }

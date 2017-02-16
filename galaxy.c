@@ -82,7 +82,6 @@ double
 	scale = 10,
 	ε = 500,
 	dt = .1,
-	DENS = 10,
 	LIM = 10,
 	Λ,
 	dt²;
@@ -146,23 +145,6 @@ randcol(void)
 }
 
 void
-drawbody(Body *b)
-{
-	Point pos, v;
-	int s;
-
-	pos.x = b->x / scale + orig.x;
-	pos.y = b->y / scale + orig.y;
-	s = b->size/scale;
-	fillellipse(screen, pos, s, s, b->col, ZP);
-	v.x = b->v.x/scale*10;
-	v.y = b->v.y/scale*10;
-	if(v.x != 0 || v.y != 0)
-		line(screen, pos, addpt(pos, v), Enddisc, Endarrow, 0, b->col, ZP);
-	flushimage(display, 1);
-}
-
-void
 drawglxy(void)
 {
 	Point pos, va;
@@ -203,7 +185,7 @@ setsize(Body *b)
 	h = hypot(d.x, d.y);
 	b->size = h == 0 ? 1 : h;
 	b->size *= scale;
-	b->mass = DENS*3*b->size*b->size; /* π is exactly 3 */
+	b->mass = 3*b->size*b->size; /* π is exactly 3 */
 }
 
 void
@@ -383,7 +365,7 @@ load(int fd)
 			b->v.x = strtod(line, &line);
 			b->v.y = strtod(line, &line);
 			b->mass = strtod(line, nil);
-			b->size = sqrt(b->mass/(3*DENS)); /* π is exactly 3 */
+			b->size = sqrt(b->mass/(3)); /* π is exactly 3 */
 			b->col = randcol();
 			CHECKLIM(b, f);
 			break;
@@ -426,11 +408,8 @@ save(void)
 	Bprint(&bout, "SCALE %g\n", scale);
 	Bprint(&bout, "DT %g\n", dt);
 	Bprint(&bout, "COSM %g\n", Λ);
-	for(b = glxy.a; b < glxy.a + glxy.l; b++) {
-		Bprint(&bout, "MKBODY %g %g ", b->x, b->y);
-		Bprint(&bout, "%g %g ", b->v.x, b->v.y);
-		Bprint(&bout, "%g\n", b->size);
-	}
+	for(b = glxy.a; b < glxy.a + glxy.l; b++)
+		Bprint(&bout, "%B\n", b);
 	Bterm(&bout);
 	close(fd);
 }
@@ -614,14 +593,19 @@ simulate(void*)
 Again:
 		space.t = EMPTY;
 		quads.l = 0;
+		insdepth = 0;
 		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 			if(quadins(b, LIM) == -1) {
 				growquads();
 				goto Again;
 			}
 		}
+		fprint(2, "insdepth: %d\n", insdepth);
+		avgcalcs = 0;
 		for(b = glxy.a; b < glxy.a + glxy.l; b++)
 			calcforces(b);
+		avgcalcs /= glxy.l;
+		fprint(2, "avgcalcs: %g\n", avgcalcs);
 		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 			b->x += dt*b->v.x + dt²*b->a.x/2;
 			b->y += dt*b->v.y + dt²*b->a.y/2;
@@ -631,27 +615,6 @@ Again:
 		}
 		qunlock(&glxy);
 	}
-}
-
-void
-mkglxy(void)
-{
-
-	glxy.a = calloc(5, sizeof(Body));
-	if(glxy.a == nil)
-		sysfatal("could not allocate glxy: %r");
-	glxy.l = 0;
-	glxy.max = 5;
-}
-
-void
-mkquads(void)
-{
-	quads.a = calloc(5, sizeof(Body));
-	if(quads.a == nil)
-		sysfatal("could not allocate quads: %r");
-	quads.l = 0;
-	quads.max = 5;
 }
 
 void
@@ -690,6 +653,8 @@ threadmain(int argc, char **argv)
 
 	if(argc > 1)
 		usage();
+
+	fmtinstall('B', Bfmt);
 
 	if(argc == 1) {
 		if(doload++)
