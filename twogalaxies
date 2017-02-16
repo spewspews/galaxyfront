@@ -1,0 +1,4 @@
+games/mkgalaxy -c -s 30 -m 250±100 -v 10 1000 | games/mkgalaxy -c -s 30 -m 250±100 -v 10 -o 2000,2000 -d 0,-30 -i 1000 | games/galaxy -i
+
+
+games/mkgalaxy -c -s 30±5 -m 250±100 -v 10 1000 | games/mkgalaxy -c -s 30±5 -m 250±100 -v 10 -o 2000,2000 -d 0,-30 -i 1000 | games/galaxy -i
