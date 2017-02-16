@@ -84,7 +84,6 @@ mkbodies(double lim)
 		b->v.y += d.y;
 		b->mass = m + RAND(mrand);
 	}
-	center();
 }
 
 void

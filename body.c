@@ -205,7 +205,6 @@ readglxy(int fd)
 		}
 	}
 	Bterm(&bin);
-	center();
 }
 
 void

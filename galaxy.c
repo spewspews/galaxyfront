@@ -339,9 +339,10 @@ move(void)
 void
 load(int fd)
 {
-		orig = divpt(subpt(screen->r.max, screen->r.min), 2);
-		orig = addpt(orig, screen->r.min);
-		readglxy(fd);
+	orig = divpt(subpt(screen->r.max, screen->r.min), 2);
+	orig = addpt(orig, screen->r.min);
+	readglxy(fd);
+	center();
 }
 
 void
