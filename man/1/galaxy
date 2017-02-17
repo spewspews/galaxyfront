@@ -207,12 +207,12 @@ Create four rotating clusters of bodies with randomized sizes, velocities, and p
 .EX
 games/mkgalaxy -c -s 40±10 -m 400±100 \\
 	-v 10±5 -o 0,1000 -d -35,0 -r 5±2 1000 |
-games/mkgalaxy -c -s 40±10 -m 400±100 \\
-	-v 10±5 -o 1000,0 -d 0,35 -r 5±2 -i 1000 |
-games/mkgalaxy -c -s 40±10 -m 400±100 \\
-	-v 10±5 -o 0,-1000 -d 35,0 -r 5±2 -i 1000 |
-games/mkgalaxy -c -s 40±10 -m 400±100 \\
-	-v 10±5 -o -1000,0 -d 0,-35 -r 5±2 -i 1000 |
+games/mkgalaxy -ic -s 40±10 -m 400±100 \\
+	-v 10±5 -o 1000,0 -d 0,35 -r 5±2 1000 |
+games/mkgalaxy -ic -s 40±10 -m 400±100 \\
+	-v 10±5 -o 0,-1000 -d 35,0 -r 5±2 1000 |
+games/mkgalaxy -ic -s 40±10 -m 400±100 \\
+	-v 10±5 -o -1000,0 -d 0,-35 -r 5±2 1000 |
 games/galaxy -i
 .SH SOURCE
 .B /sys/src/games/galaxy
@@ -220,6 +220,8 @@ games/galaxy -i
 J. Barnes & P. Hut (December 1986). "A hierarchical O(N log N) force-calculation algorithm".
 .IR Nature .
 324 (4): 446–449.
+.PP
+.IR galaxy (6)
 .SH HISTORY
 .I Galaxy
 and
