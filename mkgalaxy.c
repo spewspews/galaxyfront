@@ -7,11 +7,14 @@
 Vector o, d;
 double
 	sp = 50, sprand,
-	m = 100, mrand,
+	m = 200, mrand,
 	v, vrand,
 	r, rrand,
 	c;
 int new;
+
+void quadcalc(QB, Body*, double){}
+Image *randcol(void){ return nil; }
 
 void
 usage(void)
@@ -29,9 +32,6 @@ polar(double ang, double mag)
 	v.y = sin(ang)*mag;
 	return v;
 }
-
-void quadcalc(QB, Body*, double){}
-Image *randcol(void){ return nil; }
 
 Vector
 getvec(char *str)
@@ -80,8 +80,8 @@ mkbodies(double lim)
 		b = body();
 		b->Vector = p;
 		b->v = polar(frand()*π2, v+RAND(vrand));
-		b->v.x += d.x;
-		b->v.y += d.y;
+		b->v.x += d.x - p.y*(r + RAND(rrand))/100;
+		b->v.y += d.y + p.x*(r + RAND(rrand))/100;
 		b->mass = m + RAND(mrand);
 	}
 }

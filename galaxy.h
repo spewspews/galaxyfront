@@ -47,7 +47,6 @@ enum {
 	EMPTY,
 	QUAD,
 	BODY,
-	LIMSCALE = 2,
 };
 
 Point orig;
@@ -80,6 +79,6 @@ double avgcalcs;
 
 #define CHECKLIM(b, f) \
 	if(((f) = fabs((b)->x)) > LIM/2)	\
-		LIM = (f)*LIMSCALE;	\
+		LIM = (f)*2;	\
 	if(((f) = fabs((b)->y)) > LIM/2)	\
-		LIM = (f)*LIMSCALE
+		LIM = (f)*2

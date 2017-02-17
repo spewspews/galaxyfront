@@ -524,7 +524,7 @@ Again:
 void
 usage(void)
 {
-	fprint(2, "Usage: %s [-t throttle] [-G gravity] [-ε smooth] [-Λ cosm] [file]\n", argv0);
+	fprint(2, "Usage: %s [-t throttle] [-G gravity] [-ε smooth] [-Λ cosm] [-i] [file]\n", argv0);
 	threadexitsall("usage");
 }
 
