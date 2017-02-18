@@ -55,7 +55,6 @@ double
 	ε = 500,
 	dt = .2,
 	LIM = 10,
-	Λ,
 	dt²;
 char *file;
 int showv, showa, throttle, paused;
@@ -503,9 +502,12 @@ simulate(void*)
 
 	for(;;) {
 		qlock(&glxy);
+
 		if(throttle)
 			sleep(throttle);
+
 		drawglxy();
+
 Again:
 		space.t = EMPTY;
 		quads.l = 0;
@@ -518,9 +520,16 @@ Again:
 		}
 
 		STATS(avgcalcs = 0;)
-		for(b = glxy.a; b < glxy.a + glxy.l; b++)
-			calcforces(b);
+		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
+			b->a.x = b->newa.x;
+			b->a.y = b->newa.y;
+			b->newa.x = b->newa.y = 0;
+			STATS(calcs = 0;)
+			quadcalc(space, b, LIM);
+			STATS(avgcalcs += calcs;)
+		}
 		STATS(avgcalcs /= glxy.l;)
+
 		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
 			b->x += dt*b->v.x + dt²*b->a.x/2;
 			b->y += dt*b->v.y + dt²*b->a.y/2;
@@ -528,6 +537,7 @@ Again:
 			b->v.y += dt*(b->a.y + b->newa.y)/2;
 			CHECKLIM(b, f);
 		}
+
 		qunlock(&glxy);
 	}
 }
@@ -535,7 +545,7 @@ Again:
 void
 usage(void)
 {
-	fprint(2, "Usage: %s [-t throttle] [-G gravity] [-ε smooth] [-Λ cosm] [-i] [file]\n", argv0);
+	fprint(2, "Usage: %s [-t throttle] [-G gravity] [-ε smooth] [-i] [file]\n", argv0);
 	threadexitsall("usage");
 }
 
@@ -557,9 +567,6 @@ threadmain(int argc, char **argv)
 		break;
 	case L'ε':
 		ε = strtod(EARGF(usage()), nil);
-		break;
-	case L'Λ':
-		Λ = strtod(EARGF(usage()), nil);
 		break;
 	case 'i':
 		doload++;

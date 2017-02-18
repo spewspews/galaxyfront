@@ -18,7 +18,7 @@ Image *randcol(void){ return nil; }
 void
 usage(void)
 {
-	fprint(2, "Usage: %s [-s spacing[±rand]]\n\t[-m mass[±rand]] [-v vel[±rand]]\n\t[-r angvel[±rand]] [-d xdir,ydir]\n\t[-o xoff,yoff] [-f file]\n\t[-c] [-i] size\n", argv0);
+	fprint(2, "Usage: %s [-d dist[±r]]\n\t[-s size[±r]] [-v vel[±r]]\n\t[-av angvel[±r]] [-gv xdir,ydir]\n\t[-o xoff,yoff] [-f file]\n\t[-sq] [-i] size\n", argv0);
 	exits("usage");
 }
 

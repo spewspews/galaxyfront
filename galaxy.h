@@ -50,7 +50,7 @@ enum {
 };
 
 Point orig;
-double G, θ, scale, ε, Λ, LIM, dt, dt²;
+double G, θ, scale, ε, LIM, dt, dt²;
 Body ZB;
 QB space;
 

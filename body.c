@@ -48,23 +48,6 @@ drawbody(Body *b)
 	flushimage(display, 1);
 }
 
-void
-calcforces(Body *b)
-{
-	double h;
-	b->a.x = b->newa.x;
-	b->a.y = b->newa.y;
-	h = hypot(b->x, b->y);
-	if(h != 0.0) {
-		b->newa.x = Λ/b->mass * b->x/h;
-		b->newa.y = Λ/b->mass * b->y/h;
-	} else
-		b->newa.x = b->newa.y = 0;
-	STATS(calcs = 0;)
-	quadcalc(space, b, LIM);
-	STATS(avgcalcs += calcs;)
-}
-
 Vector
 center(void)
 {
