@@ -110,11 +110,6 @@ the processor for
 .I throttle
 milliseconds after each calculation.
 .TP
-.BI -Λ " expansion"
-Simulates the cosmological constant by exerting a constant
-.I expansion
-force on each particle. The default value is 0.
-.TP
 .BI -G " gravity"
 Sets the gravitational constant to
 .I gravity.
@@ -216,7 +211,7 @@ games/galaxy -i
 Cool patterns made by a square galaxy:
 .IP
 .EX
-games/mkgalaxy -sq 5000 | games/galaxy -i
+games/mkgalaxy -sq -av 20 5000 | games/galaxy -i
 .SH SOURCE
 .B /sys/src/games/galaxy
 .SH SEE ALSO
