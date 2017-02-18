@@ -4,14 +4,13 @@
 #include <draw.h>
 #include "galaxy.h"
 
-Vector o, d;
+Vector o, gv;
 double
-	sp = 50, sprand,
-	m = 200, mrand,
+	d = 100, drand,
+	sz = 25, szrand,
 	v, vrand,
-	r, rrand,
-	c;
-int new;
+	av, avrand;
+int new, c = 1;
 
 void quadcalc(QB, Body*, double){}
 Image *randcol(void){ return nil; }
@@ -70,19 +69,19 @@ mkbodies(double lim)
 	Vector p;
 	double x, y;
 
-	for(x = -lim/2; x < lim/2; x += sp)
-	for(y = -lim/2; y < lim/2; y += sp) {
-		p.x = x + RAND(sprand);
-		p.y = y + RAND(sprand);
+	for(x = -lim/2; x < lim/2; x += d)
+	for(y = -lim/2; y < lim/2; y += d) {
+		p.x = x + RAND(drand);
+		p.y = y + RAND(drand);
 		if(c)
 		if(hypot(p.x, p.y) > lim/2)
 			continue;
 		b = body();
 		b->Vector = p;
 		b->v = polar(frand()*π2, v+RAND(vrand));
-		b->v.x += d.x - p.y*(r + RAND(rrand))/100;
-		b->v.y += d.y + p.x*(r + RAND(rrand))/100;
-		b->mass = m + RAND(mrand);
+		b->v.x += gv.x - p.y*(av + RAND(avrand))/1000;
+		b->v.y += gv.y + p.x*(av + RAND(avrand))/1000;
+		b->size = sz + RAND(szrand);
 	}
 }
 
@@ -93,8 +92,9 @@ main(int argc, char **argv)
 	Body *b;
 	double lim;
 	int fd;
+	char *a;
 
-	srand(time(nil));
+	srand(truerand());
 	fmtinstall('B', Bfmt);
 	glxyinit();
 
@@ -110,25 +110,42 @@ main(int argc, char **argv)
 		readglxy(0);
 		break;
 	case 's':
-		sp = getvals(EARGF(usage()), &sprand);
+		a = EARGF(usage());
+		switch(a[0]) {
+		case 'q':
+			if(a[1] != '\0')
+				usage();
+			c = 0;
+			break;
+		default:
+			sz = getvals(a, &szrand);
+			break;
+		}
 		break;
-	case 'm':
-		m = getvals(EARGF(usage()), &mrand);
+	case 'a':
+		a = EARGF(usage());
+		if(a[0] != 'v' || a[1] != '\0')
+			usage();
+		argc--;
+		argv++;
+		av = getvals(*argv, &avrand);
+		break;
+	case 'g':
+		a = EARGF(usage());
+		if(a[0] != 'v' || a[1] != '\0')
+			usage();
+		argc--;
+		argv++;
+		gv = getvec(*argv);
 		break;
 	case 'v':
 		v = getvals(EARGF(usage()), &vrand);
-		break;
-	case 'r':
-		r = getvals(EARGF(usage()), &rrand);
-		break;
-	case 'c':
-		c++;
 		break;
 	case 'o':
 		o = getvec(EARGF(usage()));
 		break;
 	case 'd':
-		d = getvec(EARGF(usage()));
+		d = getvals(EARGF(usage()), &drand);
 		break;
 	} ARGEND
 

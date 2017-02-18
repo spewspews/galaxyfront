@@ -112,7 +112,7 @@ Bfmt(Fmt *f)
 	if(r < 0)
 		return -1;
 
-	return fmtprint(f, "%g", b->mass);
+	return fmtprint(f, "%g", b->size);
 }
 
 enum {
@@ -183,8 +183,8 @@ readglxy(int fd)
 			b->y = strtod(line, &line);
 			b->v.x = strtod(line, &line);
 			b->v.y = strtod(line, &line);
-			b->mass = strtod(line, nil);
-			b->size = sqrt(b->mass/3); /* π is exactly 3 */
+			b->size = strtod(line, nil);
+			b->mass = b->size*b->size*b->size;
 			b->col = randcol();
 			CHECKLIM(b, f);
 			break;

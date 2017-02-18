@@ -38,6 +38,7 @@ enum {
 	MOVE = 0,
 	ZOOM,
 	SPEED,
+	GRAV,
 	SAVE,
 	LOAD,
 	EXIT,
@@ -48,11 +49,11 @@ Cursor *cursor;
 Mousectl *mc;
 Keyboardctl kc;
 double
-	G = 6.674,
+	G = 1,
 	θ = 1,
-	scale = 10,
+	scale = 30,
 	ε = 500,
-	dt = .1,
+	dt = .2,
 	LIM = 10,
 	Λ,
 	dt²;
@@ -64,6 +65,7 @@ char *menustr[] = {
 	[LOAD]	"load",
 	[ZOOM]	"zoom",
 	[SPEED]	"speed",
+	[GRAV]	"gravity",
 	[MOVE]	"move",
 	[EXIT]	"exit",
 	[MEND]	nil
@@ -189,9 +191,8 @@ setsize(Body *b)
 	pos.y = b->y / scale + orig.y;
 	d = subpt(mc->xy, pos);
 	h = hypot(d.x, d.y);
-	b->size = h == 0 ? 1 : h;
-	b->size *= scale;
-	b->mass = 3*b->size*b->size; /* π is exactly 3 */
+	b->size = h == 0 ? scale : h*scale;
+	b->mass = b->size*b->size*b->size;
 }
 
 void
@@ -379,7 +380,7 @@ domenu(void)
 		close(fd);
 		break;
 	case ZOOM:
-		s = getinput("Zoom factor:", nil);
+		s = getinput("Zoom multiplier:", nil);
 		if(s == nil || *s == '\0')
 			break;
 		z = strtod(s, nil);
@@ -389,7 +390,7 @@ domenu(void)
 		scale /= z;
 		break;
 	case SPEED:
-		s = getinput("Speed factor:", nil);
+		s = getinput("Speed multiplier:", nil);
 		if(s == nil || *s == '\0')
 			break;
 		z = strtod(s, nil);
@@ -398,6 +399,16 @@ domenu(void)
 			break;
 		dt *= z;
 		dt² = dt*dt;
+		break;
+	case GRAV:
+		s = getinput("Gravity multiplier:", nil);
+		if(s == nil || *s == '\0')
+			break;
+		z = strtod(s, nil);
+		free(s);
+		if(z <= 0)
+			break;
+		G *= z;
 		break;
 	case MOVE:
 		move();

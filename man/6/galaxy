@@ -14,7 +14,7 @@ following instructions are accepted.
 The rest of the line must contain 5 white space delimited
 double-precision floating point numbers. They represent a
 body's x coordinate, y coordinate, x velocity component,
-y velocity component, and mass respectively.
+y velocity component, and size respectively.
 .TP
 .B ORIG
 The rest of the line must contain 2 white space delimited
