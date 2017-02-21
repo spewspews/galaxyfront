@@ -58,7 +58,6 @@ Image *randcol(void);
 
 Body *body(void);
 void drawbody(Body*);
-void calcforces(Body*);
 Vector center(void);
 void glxyinit(void);
 void readglxy(int);

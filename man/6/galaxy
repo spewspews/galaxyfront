@@ -33,9 +33,9 @@ The rest of the line must contain a double-precision
 floating point number which determines the scale
 of the view of the simulation.
 .TP
-.B COSM
+.B GRAV
 The rest of the line must contain a double-precision
-floating point number which determines the cosmological
-constant of the universe being simulated.
+floating point number which determines the gravitational
+constant of the simulation.
 .SH SEE ALSO
 .IR galaxy (1)

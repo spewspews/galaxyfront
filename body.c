@@ -103,7 +103,7 @@ enum {
 	ORIG,
 	DT,
 	SCALE,
-	COSM,
+	GRAV,
 	NOCMD,
 };
 
@@ -115,7 +115,7 @@ getcmd(char *l)
 		[ORIG]	"ORIG",
 		[DT]	"DT",
 		[SCALE]	"SCALE",
-		[COSM]	"COSM",
+		[GRAV]	"GRAV",
 	};
 	int cmd;
 
@@ -182,8 +182,8 @@ readglxy(int fd)
 		case SCALE:
 			scale = strtod(line, nil);
 			break;
-		case COSM:
-			Λ = strtod(line, nil);
+		case GRAV:
+			G = strtod(line, nil);
 			break;
 		}
 	}
@@ -201,7 +201,7 @@ writeglxy(int fd)
 	Bprint(&bout, "ORIG %d %d\n", orig.x, orig.y);
 	Bprint(&bout, "SCALE %g\n", scale);
 	Bprint(&bout, "DT %g\n", dt);
-	Bprint(&bout, "COSM %g\n", Λ);
+	Bprint(&bout, "GRAV %g\n", G);
 
 	for(b = glxy.a; b < glxy.a + glxy.l; b++)
 		Bprint(&bout, "%B\n", b);

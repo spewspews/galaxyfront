@@ -463,11 +463,15 @@ kbdthread(void*)
 
 	for(;;) {
 		recv(realkc->c, &r);
-		if(r == Kdel)
+		if(r == Kdel) {
 			threadexitsall(nil);
+		}
 		if(kc.c != nil)
 			send(kc.c, &r);
 		else switch(r) {
+		case 'q':
+			threadexitsall(nil);
+			break;
 		case 's':
 			stats ^= 1;
 			break;
