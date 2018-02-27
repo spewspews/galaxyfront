@@ -20,6 +20,18 @@ Cursor crosscursor = {
 	 0x01, 0x80, 0x01, 0x80, 0x01, 0x80, 0x00, 0x00, }
 };
 
+Cursor zoomcursor = {
+	{-7, -7},
+	{0x1F, 0xF8, 0x3F, 0xFC, 0x7F, 0xFE, 0xFB, 0xDF,
+	 0xF3, 0xCF, 0xE3, 0xC7, 0xFF, 0xFF, 0xFF, 0xFF,
+	 0xFF, 0xFF, 0xFF, 0xFF, 0xE3, 0xC7, 0xF3, 0xCF,
+	 0x7B, 0xDF, 0x7F, 0xFE, 0x3F, 0xFC, 0x1F, 0xF8, },
+	{0x00, 0x00, 0x0F, 0xF0, 0x31, 0x8C, 0x21, 0x84,
+	 0x41, 0x82, 0x41, 0x82, 0x41, 0x82, 0x7F, 0xFE,
+	 0x7F, 0xFE, 0x41, 0x82, 0x41, 0x82, 0x41, 0x82,
+	 0x21, 0x84, 0x31, 0x8C, 0x0F, 0xF0, 0x00, 0x00, }
+};
+
 Cursor pausecursor={
 	0, 0,
 	0x01, 0x80, 0x03, 0xC0, 0x07, 0xE0, 0x07, 0xe0,
@@ -34,9 +46,7 @@ Cursor pausecursor={
 };
 
 enum {
-	STK = 8192,
-	MOVE = 0,
-	ZOOM,
+	DOBODY = 0,
 	SPEED,
 	GRAV,
 	SAVE,
@@ -57,15 +67,14 @@ double
 	LIM = 10,
 	dt²;
 char *file;
-int showv, showa, throttle, paused;
+int showv, showa, paused;
 
 char *menustr[] = {
+	[DOBODY]	"new body",
 	[SAVE]	"save",
 	[LOAD]	"load",
-	[ZOOM]	"zoom",
 	[SPEED]	"speed",
 	[GRAV]	"gravity",
-	[MOVE]	"move",
 	[EXIT]	"exit",
 	[MEND]	nil
 };
@@ -106,26 +115,28 @@ randcol(void)
 }
 
 void
-pause(int p, int pri)
+pause(int p, int id)
 {
-	static int paused, ppri;
+	static int pid = -1;
 
 	switch(p) {
 	default:
 		sysfatal("invalid pause value %d:", p);
 		break;
 	case 0:
-		if(pri > ppri)
-			ppri = pri;
+		if(pid != -1 && pid != id)
+			break;
+		pid = id;
 		if(paused)
 			break;
 		paused = 1;
 		qlock(&glxy);
 		break;
 	case 1:
-		if(!paused || pri < ppri)
+		if(!paused || pid != id)
 			break;
-		paused = ppri = 0;
+		pid = -1;
+		paused = 0;
 		qunlock(&glxy);
 		break;
 	}
@@ -137,7 +148,7 @@ drawstats(void)
 	Point p;
 	static char buf[1024];
 
-	snprint(buf, sizeof(buf), "Number of bodies: %d", glxy.l);
+	snprint(buf, sizeof(buf), "Number of bodies: %d", glxy.nb);
 	p = addpt(screen->r.min, (Point){5, 3});
 	string(screen, p, display->white, ZP, font, buf);
 
@@ -158,9 +169,8 @@ drawglxy(void)
 	int s;
 
 	draw(screen, screen->r, display->black, 0, ZP);
-	for(b = glxy.a; b < glxy.a + glxy.l; b++) {
-		pos.x = b->x / scale + orig.x;
-		pos.y = b->y / scale + orig.y;
+	for(b = glxy.a; b < glxy.a + glxy.nb; b++) {
+		pos = topoint(b->Vector);
 		s = b->size/scale;
 		fillellipse(screen, pos, s, s, b->col, ZP);
 		if(showv) {
@@ -186,8 +196,7 @@ setsize(Body *b)
 	Point pos, d;
 	double h;
 
-	pos.x = b->x / scale + orig.x;
-	pos.y = b->y / scale + orig.y;
+	pos = topoint(b->Vector);
 	d = subpt(mc->xy, pos);
 	h = hypot(d.x, d.y);
 	b->size = h == 0 ? scale : h*scale;
@@ -199,18 +208,10 @@ setvel(Body *b)
 {
 	Point pos, d;
 
-	pos.x = b->x / scale + orig.x;
-	pos.y = b->y / scale + orig.y;
+	pos = topoint(b->Vector);
 	d = subpt(mc->xy, pos);
-	b->v.x = (double)d.x*scale/10;
-	b->v.y = (double)d.y*scale/10;
-}
-
-void
-setpos(Body *b)
-{
-	b->x = (mc->xy.x - orig.x) * scale;
-	b->y = (mc->xy.y - orig.y) * scale;
+	b->v.x = d.x*scale/10;
+	b->v.y = d.y*scale/10;
 }
 
 void
@@ -253,9 +254,17 @@ dobody(void)
 	double f;
 	Body *b;
 
-	pause(0, 0);
+	for(;;) {
+		readmouse(mc);
+		if(mc->buttons == 0)
+			continue;
+		if(mc->buttons == 1)
+			break;
+		return;
+	}
+
 	b = body();
-	setpos(b);
+	b->Vector = tovector(mc->xy);
 	setvel(b);
 	setsize(b);
 	b->col = randcol();
@@ -270,7 +279,7 @@ dobody(void)
 		else if(mc->buttons == 5)
 			dovel(b);
 		else
-			setpos(b);
+			b->Vector = tovector(mc->xy);
 	}
 
 	CHECKLIM(b, f);
@@ -278,8 +287,6 @@ dobody(void)
 	gc = center();
 	orig.x += gc.x / scale;
 	orig.y += gc.y / scale;
-
-	pause(1, 0);
 }
 
 char*
@@ -311,29 +318,61 @@ getinput(char *info, char *sug)
 }
 
 void
-move(void)
+domove(void)
 {
-	Point od;
+	Point oldp, off;
+
 	setcursor(mc, &crosscursor);
+	oldp = mc->xy;
 	for(;;) {
-		for(;;) {
-			readmouse(mc);
-			if(mc->buttons & 1)
-				break;
-			if(mc->buttons & 4) {
-				setcursor(mc, cursor);
-				return;
-			}
-		}
-		od = subpt(orig, mc->xy);
-		for(;;) {
-			readmouse(mc);
-			if(!(mc->buttons & 1))
-				break;
-			orig = addpt(od, mc->xy);
-			drawglxy();
-		}
+		readmouse(mc);
+		if(mc->buttons != 1)
+			break;
+		off = subpt(mc->xy, oldp);
+		oldp = mc->xy;
+		pause(0, 0);
+		orig = addpt(orig, off);
+		drawglxy();
+		pause(1, 0);
 	}
+	setcursor(mc, cursor);
+}
+
+Point
+screencenter(void)
+{
+	Point sc;
+
+	sc = divpt(subpt(screen->r.max, screen->r.min), 2);
+	return addpt(screen->r.min, sc);
+}
+
+void
+dozoom(void)
+{
+	Point oxy, d, sc, off;
+	Vector gsc;
+	double z, oscale;
+
+	setcursor(mc, &zoomcursor);
+	oxy = mc->xy;
+	oscale = scale;
+	sc = screencenter();
+	for(;;) {
+		readmouse(mc);
+		if(mc->buttons != 2)
+			break;
+		d = subpt(mc->xy, oxy);
+		z = tanh((double)d.y/200) + 1;
+		gsc = tovector(sc);
+		pause(0, 0);
+		scale = z*oscale;
+		off = subpt(topoint(gsc), sc);
+		orig = subpt(orig, off);
+		drawglxy();
+		pause(1, 0);
+	}
+	setcursor(mc, cursor);
 }
 
 void
@@ -354,6 +393,9 @@ domenu(void)
 
 	pause(0, 0);
 	switch(menuhit(3, mc, &menu, nil)) {
+	case DOBODY:
+		dobody();
+		break;
 	case SAVE:
 		s = getinput("Enter file:", file);
 		if(s == nil || *s == '\0')
@@ -378,16 +420,6 @@ domenu(void)
 		load(fd);
 		close(fd);
 		break;
-	case ZOOM:
-		s = getinput("Zoom multiplier:", nil);
-		if(s == nil || *s == '\0')
-			break;
-		z = strtod(s, nil);
-		free(s);
-		if(z <= 0)
-			break;
-		scale /= z;
-		break;
 	case SPEED:
 		s = getinput("Speed multiplier:", nil);
 		if(s == nil || *s == '\0')
@@ -409,11 +441,8 @@ domenu(void)
 			break;
 		G *= z;
 		break;
-	case MOVE:
-		move();
-		break;
 	case EXIT:
-		threadexitsall(nil);
+		quit(nil);
 		break;
 	}
 	drawglxy();
@@ -428,7 +457,10 @@ mousethread(void*)
 		readmouse(mc);
 		switch(mc->buttons) {
 		case 1:
-			dobody();
+			domove();
+			break;
+		case 2:
+			dozoom();
 			break;
 		case 4:
 			domenu();
@@ -458,19 +490,20 @@ kbdthread(void*)
 	Rune r;
 
 	threadsetname("keyboard");
-	if(realkc = initkeyboard(nil), realkc == nil)
+	realkc = initkeyboard(nil);
+	if(realkc == nil)
 		sysfatal("kbdthread: could not initkeyboard: %r");
 
 	for(;;) {
 		recv(realkc->c, &r);
-		if(r == Kdel) {
-			threadexitsall(nil);
-		}
+		if(r == Kdel)
+			quit(nil);
+
 		if(kc.c != nil)
 			send(kc.c, &r);
 		else switch(r) {
 		case 'q':
-			threadexitsall(nil);
+			quit(nil);
 			break;
 		case 's':
 			stats ^= 1;
@@ -482,86 +515,56 @@ kbdthread(void*)
 			showa ^= 1;
 			break;
 		case ' ':
-			paused ^= 1;
 			if(paused) {
-				cursor = &pausecursor;
-				pause(0, 1);
-			} else {
 				cursor = nil;
 				pause(1, 1);
+			} else {
+				cursor = &pausecursor;
+				pause(0, 1);
 			}
 			setcursor(mc, cursor);
 		}
+		drawglxy();
 	}
 }
 
-/* verlet barnes-hut */
-void
-simulate(void*)
+Vector
+tovector(Point p)
 {
-	Body *b;
-	double f;
+	Vector v;
 
-	threadsetname("simulate");
+	v.x = (p.x-orig.x) * scale;
+	v.y = (p.y-orig.y) * scale;
+	return v;
+}
 
-	for(;;) {
-		qlock(&glxy);
-
-		if(throttle)
-			sleep(throttle);
-
-		drawglxy();
-
-Again:
-		space.t = EMPTY;
-		quads.l = 0;
-		STATS(quaddepth = 0;)
-		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
-			if(quadins(b, LIM) == -1) {
-				growquads();
-				goto Again;
-			}
-		}
-
-		STATS(avgcalcs = 0;)
-		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
-			b->a.x = b->newa.x;
-			b->a.y = b->newa.y;
-			b->newa.x = b->newa.y = 0;
-			STATS(calcs = 0;)
-			quadcalc(space, b, LIM);
-			STATS(avgcalcs += calcs;)
-		}
-		STATS(avgcalcs /= glxy.l;)
-
-		for(b = glxy.a; b < glxy.a + glxy.l; b++) {
-			b->x += dt*b->v.x + dt²*b->a.x/2;
-			b->y += dt*b->v.y + dt²*b->a.y/2;
-			b->v.x += dt*(b->a.x + b->newa.x)/2;
-			b->v.y += dt*(b->a.y + b->newa.y)/2;
-			CHECKLIM(b, f);
-		}
-
-		qunlock(&glxy);
-	}
+void
+quit(char *e)
+{
+	pause(0, 0);
+	threadexitsall(e);
 }
 
 void
 usage(void)
 {
-	fprint(2, "Usage: %s [-t throttle] [-G gravity] [-ε smooth] [-i] [file]\n", argv0);
+	fprint(2, "Usage: %s [-t throttle] [-G gravity] [-ε smooth] [-p extraproc] [-i] [file]\n", argv0);
 	threadexitsall("usage");
 }
 
 void
 threadmain(int argc, char **argv)
 {
+	char* nproc;
 	int doload;
 
 	doload = 0;
 	ARGBEGIN {
 	default:
 		usage();
+		break;
+	case 'p':
+		extraproc = strtol(EARGF(usage()), nil, 0);
 		break;
 	case 't':
 		throttle = strtol(EARGF(usage()), nil, 0);
@@ -593,14 +596,23 @@ threadmain(int argc, char **argv)
 			sysfatal("threadmain: could not open file: %r");
 	}
 
+	if(extraproc < 0) {
+		nproc = getenv("NPROC");
+		if(nproc == nil)
+			extraproc = 0;
+		else
+			extraproc = strtol(nproc, nil, 10) - 1;
+		if(extraproc < 0)
+			extraproc = 0;
+	}
+
 	if(initdraw(nil, nil, "Galaxy") < 0)
 		sysfatal("initdraw failed: %r");
 	if(mc = initmouse(nil, screen), mc == nil)
 		sysfatal("initmouse failed: %r");
 
 	dt² = dt*dt;
-	orig = divpt(subpt(screen->r.max, screen->r.min), 2);
-	orig = addpt(orig, screen->r.min);
+	orig = screencenter();
 	glxyinit();
 	quadsinit();
 	if(doload)

@@ -11,7 +11,7 @@ glxyinit(void)
 	glxy.a = calloc(5, sizeof(Body));
 	if(glxy.a == nil)
 		sysfatal("could not allocate glxy: %r");
-	glxy.l = 0;
+	glxy.nb = 0;
 	glxy.max = 5;
 }
 
@@ -20,15 +20,25 @@ body(void)
 {
 	Body *b;
 
-	if(glxy.l == glxy.max) {
+	if(glxy.nb == glxy.max) {
 		glxy.max *= 2;
 		glxy.a = realloc(glxy.a, sizeof(Body) * glxy.max);
 		if(glxy.a == nil)
 			sysfatal("could not realloc glxy: %r");
 	}
-	b = glxy.a + glxy.l++;
+	b = glxy.a + glxy.nb++;
 	*b = ZB;
 	return b;
+}
+
+Point
+topoint(Vector v)
+{
+	Point p;
+
+	p.x = v.x/scale + orig.x;
+	p.y = v.y/scale + orig.y;
+	return p;
 }
 
 void
@@ -37,8 +47,7 @@ drawbody(Body *b)
 	Point pos, v;
 	int s;
 
-	pos.x = b->x / scale + orig.x;
-	pos.y = b->y / scale + orig.y;
+	pos = topoint(b->Vector);
 	s = b->size/scale;
 	fillellipse(screen, pos, s, s, b->col, ZP);
 	v.x = b->v.x/scale*10;
@@ -55,11 +64,11 @@ center(void)
 	Vector gc, gcv;
 	double mass;
 
-	if(glxy.l == 0)
+	if(glxy.nb == 0)
 		return (Vector){0, 0};
 
 	gc.x = gc.y = gcv.x = gcv.y = mass = 0;
-	for(b = glxy.a; b < glxy.a+glxy.l; b++) {
+	for(b = glxy.a; b < glxy.a+glxy.nb; b++) {
 		gc.x += b->x * b->mass;
 		gc.y += b->y * b->mass;
 		gcv.x += b->v.x * b->mass;
@@ -70,7 +79,7 @@ center(void)
 	gc.y /= mass;
 	gcv.x /= mass;
 	gcv.y /= mass;
-	for(b = glxy.a; b < glxy.a+glxy.l; b++) {
+	for(b = glxy.a; b < glxy.a+glxy.nb; b++) {
 		b->x -= gc.x;
 		b->y -= gc.y;
 		b->v.x -= gcv.x;
@@ -136,7 +145,7 @@ readglxy(int fd)
 	int cmd, len;
 	Body *b;
 
-	glxy.l = 0;
+	glxy.nb = 0;
 	Binit(&bin, fd, OREAD);
 	for(;;) {
 		line = Brdline(&bin, ' ');
@@ -203,7 +212,7 @@ writeglxy(int fd)
 	Bprint(&bout, "DT %g\n", dt);
 	Bprint(&bout, "GRAV %g\n", G);
 
-	for(b = glxy.a; b < glxy.a + glxy.l; b++)
+	for(b = glxy.a; b < glxy.a + glxy.nb; b++)
 		Bprint(&bout, "%B\n", b);
 
 	Bterm(&bout);

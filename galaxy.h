@@ -33,7 +33,7 @@ struct Quad {
 struct {
 	QLock;
 	Body *a;
-	int l, max;
+	int nb, max;
 } glxy;
 
 struct {
@@ -49,30 +49,37 @@ enum {
 	BODY,
 };
 
-Point orig;
-double G, θ, scale, ε, LIM, dt, dt²;
-Body ZB;
-QB space;
+void quit(char*);
 
 Image *randcol(void);
+Point topoint(Vector);
+Vector tovector(Point);
 
 Body *body(void);
 void drawbody(Body*);
 Vector center(void);
 void glxyinit(void);
+int Bfmt(Fmt*);
 void readglxy(int);
 void writeglxy(int);
-int Bfmt(Fmt*);
+void drawglxy(void);
 
-void quadcalc(QB, Body*, double);
+void simulate(void*);
+
+void quadcalc(Body*, QB, double);
 int quadins(Body*, double);
 void growquads(void);
 void quadsinit(void);
 
-int stats;
-int quaddepth;
-int calcs;
-double avgcalcs;
+int stats, quaddepth, calcs, extraproc, throttle;
+double G, θ, scale, ε, LIM, dt, dt², avgcalcs;
+Point orig;
+QB space;
+Body ZB;
+
+enum {
+	STK = 8192,
+};
 
 #define STATS(e) if(stats) {e}
 
